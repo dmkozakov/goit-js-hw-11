@@ -36,10 +36,19 @@ loadMoreBtn.refs.button.addEventListener("click", onLoadMore);
 async function onSubmit(evt) {
   evt.preventDefault();
 
-  gallery.query = evt.currentTarget.children.searchQuery.value.toLowerCase();
+  const searchQuery = evt.currentTarget.children.searchQuery.value
+    .toLowerCase()
+    .trim();
+
+  if (gallery.query && gallery.query === searchQuery) {
+    return Notify.info("Please, enter a new query");
+  }
+
+  gallery.query = searchQuery;
 
   if (!gallery.query) {
     return Notify.info("Please, enter a query");
+  } else {
   }
 
   gallery.resetPage();
@@ -50,8 +59,8 @@ async function onSubmit(evt) {
     clearGallery();
     onSearchFailure(data);
     onSearchSuccess(data);
-    checkOnEndSearchResults(data);
     showTotalHits(data);
+    checkOnEndSearchResults(data);
     addObserverOnLastCard(data);
   } catch (error) {
     console.log(error);
@@ -73,17 +82,18 @@ async function onLoadMore() {
   try {
     const data = await gallery.fetchImages();
     onSearchSuccess(data);
+    smoothScroll(data);
     checkOnEndSearchResults(data);
     addObserverOnLastCard(data);
   } catch (error) {
-    checkOnEndFreeCollection(error);
+    console.log(error);
   }
 }
 
 function addObserverOnLastCard(data) {
   const lastCard = document.querySelector(".photo-card:last-child");
 
-  if (data.hits < gallery.perPage) {
+  if (gallery.perPage * (gallery.page - 1) >= data.totalHits) {
     infiniteObserver.unobserve(lastCard);
     return;
   }
@@ -115,22 +125,10 @@ function onSearchSuccess(data) {
   refs.galleryBox.insertAdjacentHTML("beforeend", galleryMarkup);
 
   lightbox.refresh();
-  smoothScroll(data);
-}
-
-function checkOnEndFreeCollection(error) {
-  if (error.response.data === '[ERROR 400] "page" is out of valid range.') {
-    // чи краще зробити по статусу помилки error.response.status === 400?
-
-    return Notify.info(
-      "We're sorry, but you've reached the end of free search results."
-    );
-  }
 }
 
 function checkOnEndSearchResults(data) {
-  if (data.hits < gallery.perPage) {
-    // infiniteObserver.unobserve(lastCard);
+  if (gallery.perPage * (gallery.page - 1) >= data.totalHits) {
     return Notify.info(
       "We're sorry, but you've reached the end of search results."
     );
